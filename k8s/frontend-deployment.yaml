@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: udemy-tracker-frontend
+  namespace: udemy-tracker
+spec:
+  replicas: 2  # Frontend can scale horizontally
+  selector:
+    matchLabels:
+      app: udemy-tracker-frontend
+  template:
+    metadata:
+      labels:
+        app: udemy-tracker-frontend
+    spec:
+      containers:
+      - name: nginx
+        image: your-registry/udemy-tracker-frontend:latest
+        ports:
+        - containerPort: 80
+          name: http
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "25m"
+          limits:
+            memory: "64Mi"
+            cpu: "50m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: udemy-tracker-frontend
+  namespace: udemy-tracker
+spec:
+  selector:
+    app: udemy-tracker-frontend
+  ports:
+  - port: 80
+    targetPort: 80
+    name: http
+  type: LoadBalancer  # or use Ingress if you prefer
+

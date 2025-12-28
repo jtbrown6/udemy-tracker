@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Course, CourseStatus } from './types';
-import { getInitialData, uniqueCategories } from './utils';
+import { getInitialData, uniqueCategories, saveCourses, getMonthlyGoal, saveMonthlyGoal } from './utils';
 import { useCourseFilters } from './hooks/useCourseFilters';
 import { Sidebar } from './components/Sidebar';
 import { MobileNav } from './components/MobileNav';
@@ -8,13 +8,14 @@ import { CourseCard } from './components/CourseCard';
 import { CourseModal } from './components/CourseModal';
 import { Dashboard } from './components/Dashboard';
 import { CategoryStats } from './components/features/CategoryStats';
-import { Search, X } from 'lucide-react';
+import { Search, X, Filter } from 'lucide-react';
 
 const App: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [currentView, setCurrentView] = useState<'dashboard' | 'courses' | 'personal' | 'improvement' | 'cloud' | 'ai-appdev' | 'ai-security' | 'devsecops' | 'appsec'>('dashboard');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -22,29 +23,39 @@ const App: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<CourseStatus | 'All'>('All');
   const [sortConfig, setSortConfig] = useState<{ key: keyof Course | 'status'; direction: 'asc' | 'desc' }>({ key: 'date', direction: 'desc' });
   
-  // Monthly goal state (persisted to localStorage)
-  const [monthlyGoal, setMonthlyGoal] = useState<number>(() => {
-    const saved = localStorage.getItem('skilltrack_monthly_goal');
-    return saved ? parseInt(saved) : 2;
-  });
+  // Monthly goal state (persisted to API)
+  const [monthlyGoal, setMonthlyGoal] = useState<number>(2);
 
   // Initialize Data
   useEffect(() => {
-    const data = getInitialData();
-    setCourses(data);
+    const loadData = async () => {
+      setIsLoading(true);
+      const data = await getInitialData();
+      setCourses(data);
+      const goal = await getMonthlyGoal();
+      setMonthlyGoal(goal);
+      setIsLoading(false);
+    };
+    loadData();
   }, []);
 
-  // Save to LocalStorage on change
+  // Save to API on change (with debounce)
   useEffect(() => {
-    if (courses.length > 0) {
-      localStorage.setItem('skilltrack_courses', JSON.stringify(courses));
+    if (!isLoading && courses.length > 0) {
+      const timeoutId = setTimeout(() => {
+        saveCourses(courses);
+      }, 500); // Debounce saves by 500ms
+      
+      return () => clearTimeout(timeoutId);
     }
-  }, [courses]);
+  }, [courses, isLoading]);
 
-  // Save monthly goal to localStorage
+  // Save monthly goal to API
   useEffect(() => {
-    localStorage.setItem('skilltrack_monthly_goal', monthlyGoal.toString());
-  }, [monthlyGoal]);
+    if (!isLoading) {
+      saveMonthlyGoal(monthlyGoal);
+    }
+  }, [monthlyGoal, isLoading]);
 
   const categories = useMemo(() => ['All', ...uniqueCategories(courses)], [courses]);
 
@@ -184,6 +195,17 @@ const App: React.FC = () => {
     setSelectedCategory('All');
     setSelectedStatus('All');
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mb-4"></div>
+          <p className="text-slate-400">Loading your courses...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 flex pb-20 md:pb-0">

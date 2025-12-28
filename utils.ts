@@ -1,5 +1,6 @@
 import { Course, CourseStatus } from './types';
 import { RAW_CSV_DATA } from './constants';
+import { api } from './api';
 
 export const parseCSV = (csv: string): Course[] => {
   const lines = csv.trim().split('\n');
@@ -34,7 +35,19 @@ export const parseCSV = (csv: string): Course[] => {
   });
 };
 
-export const getInitialData = (): Course[] => {
+export const getInitialData = async (): Promise<Course[]> => {
+  // Try to get from API first
+  try {
+    const apiCourses = await api.getCourses();
+    if (apiCourses && apiCourses.length > 0) {
+      console.log('Loaded courses from API');
+      return apiCourses;
+    }
+  } catch (error) {
+    console.warn('Failed to load from API, falling back to localStorage/CSV');
+  }
+
+  // Fallback to localStorage
   const saved = localStorage.getItem('skilltrack_courses');
   if (saved) {
     let courses = JSON.parse(saved) as Course[];
@@ -49,14 +62,50 @@ export const getInitialData = (): Course[] => {
       return c;
     });
     
-    // Save the migrated data back to localStorage
-    if (needsSave) {
-      localStorage.setItem('skilltrack_courses', JSON.stringify(courses));
+    // Save the migrated data to API
+    if (needsSave || courses.length > 0) {
+      try {
+        await api.saveCourses(courses);
+        console.log('Migrated courses from localStorage to API');
+      } catch (error) {
+        console.warn('Failed to migrate to API');
+        localStorage.setItem('skilltrack_courses', JSON.stringify(courses));
+      }
     }
     
     return courses;
   }
+  
+  // Final fallback to CSV
   return parseCSV(RAW_CSV_DATA);
+};
+
+export const saveCourses = async (courses: Course[]): Promise<void> => {
+  // Save to API
+  try {
+    await api.saveCourses(courses);
+  } catch (error) {
+    console.error('Failed to save to API, saving to localStorage as backup');
+    localStorage.setItem('skilltrack_courses', JSON.stringify(courses));
+  }
+};
+
+export const getMonthlyGoal = async (): Promise<number> => {
+  try {
+    const value = await api.getSetting('monthly_goal');
+    return value ? parseInt(value) : 2;
+  } catch (error) {
+    const saved = localStorage.getItem('skilltrack_monthly_goal');
+    return saved ? parseInt(saved) : 2;
+  }
+};
+
+export const saveMonthlyGoal = async (goal: number): Promise<void> => {
+  try {
+    await api.saveSetting('monthly_goal', goal.toString());
+  } catch (error) {
+    localStorage.setItem('skilltrack_monthly_goal', goal.toString());
+  }
 };
 
 export const calculateDaysRemaining = (deadline: string | undefined): number | null => {

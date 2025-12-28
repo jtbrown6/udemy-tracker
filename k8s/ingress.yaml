@@ -1,0 +1,43 @@
+# Optional: Use this instead of LoadBalancer if you have an Ingress controller
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: udemy-tracker
+  namespace: udemy-tracker
+  annotations:
+    # Add your ingress annotations here (e.g., cert-manager, nginx-specific)
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx  # Change based on your ingress controller
+  rules:
+  - host: udemy-tracker.yourdomain.com  # Change to your domain
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: udemy-tracker-backend
+            port:
+              number: 3001
+      - path: /health
+        pathType: Prefix
+        backend:
+          service:
+            name: udemy-tracker-backend
+            port:
+              number: 3001
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: udemy-tracker-frontend
+            port:
+              number: 80
+  # Uncomment if using TLS
+  # tls:
+  # - hosts:
+  #   - udemy-tracker.yourdomain.com
+  #   secretName: udemy-tracker-tls
+

@@ -2,6 +2,19 @@
 
 A modern, engaging web application to track and manage your online learning progress from Udemy courses.
 
+## 🌟 NEW: Cross-Device Sync
+
+Your course progress now **syncs across all your devices**!
+
+- ✅ **Simple Backend API** - Lightweight Express server
+- ✅ **SQLite Database** - Single-file persistence (perfect for personal use)
+- ✅ **Kubernetes Ready** - Includes PVC configurations for production deployment
+- ✅ **Auto Migration** - Existing localStorage data migrates automatically
+- ✅ **No Auth Needed** - Designed for private clusters, single-user use
+- ✅ **Easy Backups** - Single database file to backup/restore
+
+See [docs/storage.md](./docs/storage.md) for architecture details.
+
 ## Features
 
 ### Core Features
@@ -48,35 +61,77 @@ A modern, engaging web application to track and manage your online learning prog
 - Gamification elements (streaks, achievements)
 - Course notes with GitHub/markdown integration
 
-## Run Locally
+## 🚀 Quick Start
 
-**Prerequisites:** Node.js
+**Local Development:**
+```bash
+# Install dependencies
+npm install
+cd server && npm install && cd ..
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+# Terminal 1: Start backend
+cd server && npm start
 
-2. Run the app:
-   ```bash
-   npm run dev
-   ```
+# Terminal 2: Start frontend
+npm run dev
+```
+Access at http://localhost:5173
 
-3. Open http://localhost:3000 in your browser
+**Docker Compose (Recommended):**
+```bash
+docker-compose up -d
+```
+Access at http://localhost:3000
 
-## Tech Stack
+**Kubernetes Deployment:**
+```bash
+make push REGISTRY=your-registry VITE_API_URL=https://your-domain.com
+sed -i "s|your-registry|your-registry-url|g" k8s/*-deployment.yaml
+make deploy
+```
 
+📖 **See [QUICKSTART.md](./QUICKSTART.md) for detailed instructions**  
+📖 **See [DEPLOYMENT.md](./DEPLOYMENT.md) for production deployment**  
+📖 **See [k8s/README.md](./k8s/README.md) for Kubernetes specifics**
+
+## 🛠️ Tech Stack
+
+**Frontend:**
 - **React 19** - UI framework
 - **TypeScript** - Type safety
 - **Vite** - Build tool
 - **Tailwind CSS** - Styling
 - **Recharts** - Charts and visualizations
 - **Lucide React** - Icons
-- **LocalStorage** - Data persistence
 
-## Data
+**Backend:**
+- **Node.js + Express** - Simple REST API
+- **SQLite (better-sqlite3)** - File-based database
+- **CORS** - Cross-origin support
 
-Course data is loaded from `constants.ts` which contains the CSV data. Changes are persisted to localStorage automatically.
+**Infrastructure:**
+- **Docker** - Container images
+- **Kubernetes** - Production deployment with PVCs
+- **Nginx** - Static file serving
+
+## 💾 Data Storage
+
+Course data is stored in a **SQLite database** (`/data/courses.db`) that persists across restarts.
+
+- **Local Dev:** Database stored in `./data/courses.db`
+- **Docker Compose:** Database in `./data/courses.db` (volume mounted)
+- **Kubernetes:** Database on PersistentVolume (1Gi PVC)
+
+**Backup:**
+```bash
+# Docker Compose
+cp ./data/courses.db backup.db
+
+# Kubernetes
+make backup
+```
+
+Initial seed data loaded from `constants.ts`. LocalStorage data auto-migrates to backend on first run.
 
 ## License
 
